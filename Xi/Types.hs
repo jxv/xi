@@ -13,10 +13,14 @@ module Xi.Types
   , Projection(..)
   ) where
 
+------------------------------------------------------------------------------------------
+
 import Foreign.C.Types
 import Graphics.Rendering.OpenGL.Raw
 
 import qualified Linear as L
+
+------------------------------------------------------------------------------------------
 
 type F = CFloat
 
