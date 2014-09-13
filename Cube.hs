@@ -1,6 +1,7 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module Cube where
 
@@ -15,22 +16,20 @@ import System.IO
 import System.Exit
 import Graphics.Rendering.OpenGL.Raw
 
-import Control.Exception            (catch, SomeException)
+import Control.Exception (catch, SomeException)
 import Data.Bits ((.|.))
 
-import qualified Graphics.UI.GLUT                     as GLUT
-import qualified Graphics.Rendering.OpenGL.GL         as GL
-import qualified Graphics.Rendering.OpenGL.GL.Shaders as GL
-import qualified Linear                               as L
-import qualified Xi                                   as Xi
+import qualified Graphics.UI.GLUT as GLUT
+import qualified Linear as L
+import qualified Xi as Xi
 
 ------------------------------------------------------------------------------------------
 
 import Control.Applicative
 import Foreign.Marshal hiding (void)
 
-import qualified Data.ByteString                      as B
-import qualified Data.ByteString.Unsafe               as B
+import qualified Data.ByteString as B
+import qualified Data.ByteString.Unsafe as B
 
 ------------------------------------------------------------------------------------------
 
@@ -54,11 +53,11 @@ data UserData = UserData
 
 makeApp :: IO App
 makeApp = do
-  prog <- Xi.makeProgram "data/Cube.vsh" "data/Cube.fsh"
+  prog <- Xi.makeProgram "data/Cube.vert" "data/Cube.frag"
   glUseProgram prog
   --
-  posLoc <- query (glGetAttribLocation prog) "a_position\0"
-  mvpLoc <- query (glGetUniformLocation prog) "u_modelViewProjMat\0"
+  posLoc <- B.unsafeUseAsCString "a_position\0" (glGetAttribLocation prog)
+  mvpLoc <- B.unsafeUseAsCString "u_modelViewProjMat\0" (glGetUniformLocation prog)
   --
   vptr <- mallocList cubeVerts
   iptr <- mallocList cubeIndices
@@ -104,8 +103,6 @@ main = do
 
 ------------------------------------------------------------------------------------------
 
-query = flip B.unsafeUseAsCString
-
 setup :: IO ()
 setup = do
   checkGLSLSupport
@@ -122,14 +119,13 @@ setup = do
 
 timer :: App -> GLUT.TimerCallback
 timer app@App{..} = do
-  (GL.Size width height) <- GLUT.get GLUT.windowSize
+  (GLUT.Size width height) <- GLUT.get GLUT.windowSize
   modifyIORef appUserData $ \ud@UserData{..} ->
     let angle  = udAngle + 40 * (dt / 1000)
         angle' = (if angle >= 360 then subtract 360 else id) angle
 
         camera = Xi.Camera (Xi.Perspective 60)
-                           (fromIntegral width)
-                           (fromIntegral height)
+                           (fromIntegral width / fromIntegral height)
                            1
                            20
                            (L.V3 0 0 0)
@@ -153,7 +149,7 @@ display App{..} = do
   UserData{..} <- readIORef appUserData
   --
   -- Xi.startFrame
-  (GL.Size width height) <- GLUT.get GLUT.windowSize
+  (GLUT.Size width height) <- GLUT.get GLUT.windowSize
   glViewport 0 0 (fromIntegral width) (fromIntegral height)
   glClear $ gl_COLOR_BUFFER_BIT .|. gl_DEPTH_BUFFER_BIT
   --
@@ -174,13 +170,13 @@ display App{..} = do
 
 reshape :: App -> GLUT.ReshapeCallback
 reshape App{..} size = do
-  GL.viewport GLUT.$= (GL.Position 0 0, size)
+  GLUT.viewport GLUT.$= (GLUT.Position 0 0, size)
 
 keyboardMouse :: App -> GLUT.KeyboardMouseCallback
 keyboardMouse App{..} key keyState modifiers pos = do
   case (key, keyState) of
-    (GLUT.Char 'p', GLUT.Up) -> modifyIORef appUserData
-                                            (\ud -> ud { udProjection = not (udProjection ud)})
+    (GLUT.Char 'p', GLUT.Up) ->
+      modifyIORef appUserData (\ud -> ud { udProjection = not (udProjection ud)})
     _ -> return ()
 
 motion :: App -> GLUT.MotionCallback
@@ -191,11 +187,14 @@ motion App{..} pos = do
 
 checkGLSLSupport :: IO ()
 checkGLSLSupport = do
-   version <- GL.get (GL.majorMinor GL.glVersion)
+   return ()
+{-
+   version <- GLUT.get (GL.majorMinor GL.glVersion)
    unless (version >= (2,0)) $ do
-      extensions <- GL.get GL.glExtensions
+      extensions <- GLUT.get GL.glExtensions
       unless ("GL_ARB_shading_language_100" `elem` extensions) $
          ioError (userError "No GLSL support found.")
+-}
 
 ------------------------------------------------------------------------------------------
 

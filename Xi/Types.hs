@@ -1,5 +1,6 @@
 module Xi.Types
-  ( Pos2
+  ( F
+  , Pos2
   , Pos3
   , Vec2
   , Vec3
@@ -12,21 +13,25 @@ module Xi.Types
   , Projection(..)
   ) where
 
+import Foreign.C.Types
 import Graphics.Rendering.OpenGL.Raw
+
 import qualified Linear as L
 
-type Pos2 = L.V2 GLfloat
-type Pos3 = L.V3 GLfloat
+type F = CFloat
 
-type Vec2 = L.V2 GLfloat
-type Vec3 = L.V3 GLfloat
-type Vec4 = L.V4 GLfloat
+type Pos2 = L.V2 F
+type Pos3 = L.V3 F
 
-type Mat2 = L.M22 GLfloat
-type Mat3 = L.M33 GLfloat
-type Mat4 = L.M44 GLfloat
+type Vec2 = L.V2 F
+type Vec3 = L.V3 F
+type Vec4 = L.V4 F
 
-type Color4f = (GLclampf, GLclampf, GLclampf, GLclampf)
+type Mat2 = L.M22 F
+type Mat3 = L.M33 F
+type Mat4 = L.M44 F
+
+type Color4f = (F, F, F, F)
 
 data Xi = Xi
   { xiClearColor      :: Color4f
@@ -38,18 +43,15 @@ data Xi = Xi
 
 data Projection
   = Ortho
-  | Perspective GLfloat -- | Field of View
+  | Perspective F -- | Field of View
 
 data Camera = Camera
-  { cameraProjection   :: Projection
-  , cameraScreenWidth  :: GLfloat
-  , cameraScreenHeight :: GLfloat
-  , cameraNear         :: GLfloat
-  , cameraFar          :: GLfloat
-  , cameraPosition     :: Vec3
-  , cameraTarget       :: Vec3
-  , cameraUp           :: Vec3
+  { cameraProjection  :: Projection
+  , cameraAspectRatio :: F
+  , cameraNear        :: F
+  , cameraFar         :: F
+  , cameraPosition    :: Vec3
+  , cameraTarget      :: Vec3
+  , cameraUp          :: Vec3
   }
-
-
 

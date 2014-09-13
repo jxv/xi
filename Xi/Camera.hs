@@ -19,7 +19,7 @@ import Xi.Util
 
 ------------------------------------------------------------------------------------------
 
-frustum :: Mat4 -> GLfloat -> GLfloat -> GLfloat -> GLfloat -> GLfloat -> GLfloat -> Mat4
+frustum :: Mat4 -> F -> F -> F -> F -> F -> F -> Mat4
 frustum mat left right bottom top nearZ farZ
   | nearZ <= 0 || farZ <= 0 || dx <= 0 || dy <= 0 || dz <= 0 = mat
   | otherwise = frustMat L.!*! mat
@@ -34,7 +34,7 @@ frustum mat left right bottom top nearZ farZ
     (L.V4 ((right + left) / dx) ((top + bottom) / dy) (-(nearZ + farZ) / dz)     (-1))
     (L.V4 0                     0                     ((-2) * nearZ * farZ / dz) 0)
 
-ortho :: Mat4 -> GLfloat -> GLfloat -> GLfloat -> GLfloat -> GLfloat -> GLfloat -> Mat4
+ortho :: Mat4 -> F -> F -> F -> F -> F -> F -> Mat4
 ortho mat left right bottom top nearZ farZ
   | dx == 0 || dy == 0 || dz == 0 = mat
   | otherwise = orthoMat L.!*! mat
@@ -51,18 +51,16 @@ ortho mat left right bottom top nearZ farZ
 
 cameraProjectionMat :: Camera -> Mat4
 cameraProjectionMat Camera{ cameraProjection = Ortho, ..} =
-  let aspect = cameraScreenWidth / cameraScreenHeight
-      left = -aspect
-      right = aspect
+  let left = -cameraAspectRatio
+      right = cameraAspectRatio
       bottom = -1
       top = 1
       near = cameraNear
       far = cameraFar
   in ortho L.eye4 left right bottom top near far
 cameraProjectionMat Camera{ cameraProjection = Perspective fieldOfViewY, ..} =
-  let aspect = cameraScreenWidth / cameraScreenHeight
-      height = cameraNear * tan (fieldOfViewY / 360 * pi)
-      width = aspect * height
+  let height = cameraNear * tan (fieldOfViewY / 360 * pi)
+      width = cameraAspectRatio * height
       left = -width
       right = width
       bottom = -height
