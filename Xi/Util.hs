@@ -6,34 +6,28 @@ module Xi.Util
 
 ------------------------------------------------------------------------------------------
 
-import Control.Lens
-import Graphics.Rendering.OpenGL.Raw
-
-import qualified Linear as L
-
-------------------------------------------------------------------------------------------
-
+import Xi.Imports
 import Xi.Types
 
 ------------------------------------------------------------------------------------------
 
 scale :: Mat4 -> F -> F -> F -> Mat4
-scale (L.V4 x y z w) sx sy sz = L.V4
-  (x L.^* sx)
-  (y L.^* sy)
-  (z L.^* sz)
+scale (V4 x y z w) sx sy sz = V4
+  (x ^* sx)
+  (y ^* sy)
+  (z ^* sz)
   w
 
 translate :: Mat4 -> F -> F -> F -> Mat4
-translate (L.V4 x y z w) tx ty tz = L.V4 x y z $ L.V4
-  ((w^.L._x) + (x^.L._x) * tx + (y^.L._x) * ty + (z^.L._x) * tz)
-  ((w^.L._y) + (x^.L._y) * tx + (y^.L._y) * ty + (z^.L._y) * tz)
-  ((w^.L._z) + (x^.L._z) * tx + (y^.L._z) * ty + (z^.L._z) * tz)
-  ((w^.L._w) + (x^.L._w) * tx + (y^.L._w) * ty + (z^.L._w) * tz)
+translate (V4 x y z w) tx ty tz = V4 x y z $ V4
+  ((w^._x) + (x^._x) * tx + (y^._x) * ty + (z^._x) * tz)
+  ((w^._y) + (x^._y) * tx + (y^._y) * ty + (z^._y) * tz)
+  ((w^._z) + (x^._z) * tx + (y^._z) * ty + (z^._z) * tz)
+  ((w^._w) + (x^._w) * tx + (y^._w) * ty + (z^._w) * tz)
 
 rotate :: Mat4 -> F -> F -> F -> F -> Mat4
 rotate mat angle x y z
-  | mag > 0 = rotMat L.!*! mat
+  | mag > 0 = rotMat !*! mat
   | otherwise = mat
  where
   sinAngle = sin $ angle * pi / 180
@@ -55,9 +49,9 @@ rotate mat angle x y z
   zs = z' * sinAngle
   oneMinusCos = 1 - cosAngle
   --
-  rotMat = L.V4
-    (L.V4 ((oneMinusCos * xx) + cosAngle) ((oneMinusCos * xy) - zs)       ((oneMinusCos * zx) + ys)       0)
-    (L.V4 ((oneMinusCos * xy) + zs)       ((oneMinusCos * yy) + cosAngle) ((oneMinusCos * yz) - xs)       0)
-    (L.V4 ((oneMinusCos * zx) - ys)       ((oneMinusCos * yz) + xs)       ((oneMinusCos * zz) + cosAngle) 0)
-    (L.V4 0                               0                               0                               1)
+  rotMat = V4
+    (V4 ((oneMinusCos * xx) + cosAngle) ((oneMinusCos * xy) - zs)       ((oneMinusCos * zx) + ys)       0)
+    (V4 ((oneMinusCos * xy) + zs)       ((oneMinusCos * yy) + cosAngle) ((oneMinusCos * yz) - xs)       0)
+    (V4 ((oneMinusCos * zx) - ys)       ((oneMinusCos * yz) + xs)       ((oneMinusCos * zz) + cosAngle) 0)
+    (V4 0                               0                               0                               1)
 

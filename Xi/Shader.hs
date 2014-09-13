@@ -1,25 +1,18 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Xi.Shader where
+module Xi.Shader
+  ( makeProgram
+  ) where
 
-import Control.Applicative
-import Control.Monad
-import Data.Array.IO
-import Data.Array.Storable
-import Data.Monoid
-import Foreign.Ptr
-import Foreign.Storable
-import Foreign.Marshal
-import Linear
-import System.IO
+------------------------------------------------------------------------------------------
 
-import qualified Data.ByteString                      as B
-import qualified Data.ByteString.Unsafe               as B
-import qualified Data.ByteString.Char8                as BC
-import qualified Graphics.Rendering.OpenGL.GL         as GL
-import qualified Graphics.Rendering.OpenGL.GL.Shaders as GL
+import qualified Data.ByteString as B
+import qualified Data.ByteString.Unsafe as B
+import qualified Data.ByteString.Char8 as BC
 
-import Graphics.Rendering.OpenGL.Raw
+------------------------------------------------------------------------------------------
+
+import Xi.Imports
 import Xi.Debug
 
 ------------------------------------------------------------------------------------------

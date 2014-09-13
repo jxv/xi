@@ -6,13 +6,12 @@ module Xi.Xi
   , endFrame
   ) where
 
-import qualified Linear as L
+------------------------------------------------------------------------------------------
 
-import Control.Lens
-import Data.Bits
-import Data.Tuple.Curry
-import Graphics.Rendering.OpenGL.Raw
+import Xi.Imports
 import Xi.Types
+
+------------------------------------------------------------------------------------------
 
 makeXi :: IO () -> Xi
 makeXi swapBuffersCallback = Xi
@@ -20,8 +19,8 @@ makeXi swapBuffersCallback = Xi
   , xiClearBufferBits = gl_COLOR_BUFFER_BIT .|.
                               gl_DEPTH_BUFFER_BIT
   , xiSwapBuffers = swapBuffersCallback
-  , xiModelViewMat = L.eye4
-  , xiProjectionMat = L.eye4
+  , xiModelViewMat = eye4
+  , xiProjectionMat = eye4
   }
 
 startFrame :: Xi -> IO ()

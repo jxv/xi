@@ -15,25 +15,22 @@ module Xi.Types
 
 ------------------------------------------------------------------------------------------
 
-import Foreign.C.Types
-import Graphics.Rendering.OpenGL.Raw
-
-import qualified Linear as L
+import Xi.Imports
 
 ------------------------------------------------------------------------------------------
 
 type F = CFloat
 
-type Pos2 = L.V2 F
-type Pos3 = L.V3 F
+type Pos2 = V2 F
+type Pos3 = V3 F
 
-type Vec2 = L.V2 F
-type Vec3 = L.V3 F
-type Vec4 = L.V4 F
+type Vec2 = V2 F
+type Vec3 = V3 F
+type Vec4 = V4 F
 
-type Mat2 = L.M22 F
-type Mat3 = L.M33 F
-type Mat4 = L.M44 F
+type Mat2 = M22 F
+type Mat3 = M33 F
+type Mat4 = M44 F
 
 type Color4f = (F, F, F, F)
 
