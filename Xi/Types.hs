@@ -1,18 +1,6 @@
-module Xi.Types
-  ( F
-  , Pos2
-  , Pos3
-  , Vec2
-  , Vec3
-  , Vec4
-  , Mat2
-  , Mat3
-  , Mat4
-  , Xi(..)
-  , Buffer(..)
-  , Camera(..)
-  , Projection(..)
-  ) where
+{-# LANGUAGE TemplateHaskell #-}
+
+module Xi.Types where
 
 ------------------------------------------------------------------------------------------
 
@@ -39,27 +27,31 @@ data Buffer
   = ColorBuffer
   | DepthBuffer
   | StencilBuffer
-  deriving (Show, Eq)
+    deriving (Show, Eq)
 
 data Xi = Xi
-  { xiBackgroundColor :: Color4f
-  , xiActiveBuffers   :: [Buffer]
-  , xiSwapBuffers     :: IO ()
-  , xiModelViewMat    :: Mat4
-  , xiProjectionMat   :: Mat4
+  { _xiBackgroundColor :: Color4f
+  , _xiActiveBuffers   :: [Buffer]
+  , _xiSwapBuffers     :: IO ()
+  , _xiModelViewMat    :: Mat4
+  , _xiProjectionMat   :: Mat4
   }
 
 data Projection
   = Ortho
   | Perspective F -- | Field of View
+    deriving (Eq, Show)
 
 data Camera = Camera
-  { cameraProjection  :: Projection
-  , cameraAspectRatio :: F
-  , cameraNear        :: F
-  , cameraFar         :: F
-  , cameraPosition    :: Vec3
-  , cameraTarget      :: Vec3
-  , cameraUp          :: Vec3
-  }
+  { _cameraProjection  :: Projection
+  , _cameraAspectRatio :: F
+  , _cameraNear        :: F
+  , _cameraFar         :: F
+  , _cameraPosition    :: Vec3
+  , _cameraTarget      :: Vec3
+  , _cameraUp          :: Vec3
+  } deriving (Eq, Show)
 
+
+makeLenses ''Xi
+makeLenses ''Camera

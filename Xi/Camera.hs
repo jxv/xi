@@ -3,6 +3,7 @@
 
 module Xi.Camera
   ( cameraProjectionMat
+  , lookAt
   ) where
 
 ------------------------------------------------------------------------------------------
@@ -48,28 +49,28 @@ lookAt position target up =
   let z = normalize (position - target)
       x = normalize (up `cross` z)
       y = normalize (z `cross` x)
-      m = V4 (point x) (point y) (point z) (V4 0 0 0 1)
+      m = V4 (vector x) (vector y) (vector z) (V4 0 0 0 1)
       position' = m !* (point (-position))
       m' = (adjoint m) & _w .~ position'
   in m'
 
 cameraProjectionMat :: Camera -> Mat4
-cameraProjectionMat Camera{ cameraProjection = Ortho, ..} =
-  let left = -cameraAspectRatio
-      right = cameraAspectRatio
+cameraProjectionMat Camera{ _cameraProjection = Ortho, ..} =
+  let left = -_cameraAspectRatio
+      right = _cameraAspectRatio
       bottom = -1
       top = 1
-      near = cameraNear
-      far = cameraFar
+      near = _cameraNear
+      far = _cameraFar
   in ortho eye4 left right bottom top near far
-cameraProjectionMat Camera{ cameraProjection = Perspective fieldOfViewY, ..} =
-  let height = cameraNear * tan (fieldOfViewY / 360 * pi)
-      width = cameraAspectRatio * height
+cameraProjectionMat Camera{ _cameraProjection = Perspective fieldOfViewY, ..} =
+  let height = _cameraNear * tan (fieldOfViewY / 360 * pi)
+      width = _cameraAspectRatio * height
       left = -width
       right = width
       bottom = -height
       top = height
-      near = cameraNear
-      far = cameraFar
+      near = _cameraNear
+      far = _cameraFar
   in frustum eye4 left right bottom top near far
 

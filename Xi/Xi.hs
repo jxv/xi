@@ -16,11 +16,11 @@ import Xi.Types
 
 makeXi :: IO () -> Xi
 makeXi swapBuffersCallback = Xi
-  { xiBackgroundColor = (0.2, 0.2, 0.2, 1.0)
-  , xiActiveBuffers = [ColorBuffer, DepthBuffer]
-  , xiSwapBuffers = swapBuffersCallback
-  , xiModelViewMat = eye4
-  , xiProjectionMat = eye4
+  { _xiBackgroundColor = (0.2, 0.2, 0.2, 1.0)
+  , _xiActiveBuffers = [ColorBuffer, DepthBuffer]
+  , _xiSwapBuffers = swapBuffersCallback
+  , _xiModelViewMat = eye4
+  , _xiProjectionMat = eye4
   }
 
 bufferBit :: Buffer -> GLenum
@@ -31,11 +31,11 @@ bufferBit = \case
 
 startFrame :: Xi -> IO ()
 startFrame Xi{..} = do
-  (uncurryN glClearColor) xiBackgroundColor
-  glClear $ foldr (.|.) 0 (map bufferBit xiActiveBuffers)
+  (uncurryN glClearColor) _xiBackgroundColor
+  glClear $ foldr (.|.) 0 (map bufferBit _xiActiveBuffers)
 
 endFrame :: Xi -> IO ()
 endFrame Xi{..} = do
   glFlush
-  xiSwapBuffers
+  _xiSwapBuffers
 
