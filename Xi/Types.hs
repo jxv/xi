@@ -9,6 +9,7 @@ module Xi.Types
   , Mat3
   , Mat4
   , Xi(..)
+  , Buffer(..)
   , Camera(..)
   , Projection(..)
   ) where
@@ -34,9 +35,15 @@ type Mat4 = M44 F
 
 type Color4f = (F, F, F, F)
 
+data Buffer
+  = ColorBuffer
+  | DepthBuffer
+  | StencilBuffer
+  deriving (Show, Eq)
+
 data Xi = Xi
-  { xiClearColor      :: Color4f
-  , xiClearBufferBits :: GLenum
+  { xiBackgroundColor :: Color4f
+  , xiActiveBuffers   :: [Buffer]
   , xiSwapBuffers     :: IO ()
   , xiModelViewMat    :: Mat4
   , xiProjectionMat   :: Mat4

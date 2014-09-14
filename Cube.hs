@@ -3,7 +3,7 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-module Cube where
+module Main where
 
 import Control.Lens
 import Control.Monad
@@ -15,6 +15,7 @@ import Foreign.Storable
 import System.IO
 import System.Exit
 import Graphics.Rendering.OpenGL.Raw
+import qualified Linear as L
 
 import Control.Exception (catch, SomeException)
 import Data.Bits ((.|.))
@@ -34,20 +35,24 @@ import qualified Data.ByteString.Unsafe as B
 ------------------------------------------------------------------------------------------
 
 data App = App
-  { appXi :: Xi.Xi
-  , appUserData :: IORef UserData
+  { _appXi :: Xi.Xi
+  , _appUserData :: IORef UserData
   }
 
 data UserData = UserData
-  { udProgram          :: GLuint
-  , udPositionLoc      :: GLuint
-  , udModelViewProjLoc :: GLint
-  , udAngle            :: GLfloat
-  , udVertPtr          :: Ptr GLfloat
-  , udIdxPtr           :: Ptr GLuint
-  , udModelViewProjMat :: Xi.Mat4
-  , udProjection       :: Bool
+  { _udProgram          :: GLuint
+  , _udPositionLoc      :: GLuint
+  , _udModelViewProjLoc :: GLint
+  , _udAngle            :: GLfloat
+  , _udVertPtr          :: Ptr GLfloat
+  , _udIdxPtr           :: Ptr GLuint
+  , _udProjectionMat    :: Xi.Mat4
+  , _udModelViewProjMat :: Xi.Mat4
+  , _udCamera           :: Xi.Camera
   }
+
+makeLenses ''App
+makeLenses ''UserData
 
 ------------------------------------------------------------------------------------------
 
@@ -67,14 +72,24 @@ makeApp = do
  where
   xi = Xi.makeXi GLUT.swapBuffers
   userData prog posLoc mvpLoc vptr iptr = UserData
-    { udProgram = prog
-    , udPositionLoc = fromIntegral posLoc
-    , udModelViewProjLoc = mvpLoc
-    , udAngle = 45
-    , udVertPtr = vptr
-    , udIdxPtr = iptr
-    , udModelViewProjMat = L.eye4
-    , udProjection = True
+    { _udProgram = prog
+    , _udPositionLoc = fromIntegral posLoc
+    , _udModelViewProjLoc = mvpLoc
+    , _udAngle = 45
+    , _udVertPtr = vptr
+    , _udIdxPtr = iptr
+    , _udProjectionMat = L.eye4
+    , _udModelViewProjMat = L.eye4
+    , _udCamera = camera
+    }
+  camera = Xi.Camera
+    { Xi.cameraProjection = Xi.Perspective 60
+    , Xi.cameraAspectRatio = 1
+    , Xi.cameraNear = 1
+    , Xi.cameraFar = 20
+    , Xi.cameraPosition = L.V3 0 0 0
+    , Xi.cameraTarget = L.V3 0 0 0
+    , Xi.cameraUp = L.V3 0 0 0
     }
 
 ------------------------------------------------------------------------------------------
@@ -96,10 +111,10 @@ main = do
   --
   GLUT.mainLoop
   --
-  ud <- readIORef (appUserData app)
-  free (udVertPtr ud)
-  free (udIdxPtr ud)
-  glDeleteProgram (udProgram ud)
+  ud <- readIORef (app^.appUserData)
+  free (ud^.udVertPtr)
+  free (ud^.udIdxPtr)
+  glDeleteProgram (ud^.udProgram)
 
 ------------------------------------------------------------------------------------------
 
@@ -116,24 +131,14 @@ setup = do
 ------------------------------------------------------------------------------------------
 
 timer :: App -> GLUT.TimerCallback
-timer app@App{..} = do
-  (GLUT.Size width height) <- GLUT.get GLUT.windowSize
-  modifyIORef appUserData $ \ud@UserData{..} ->
-    let angle  = udAngle + 40 * (dt / 1000)
+timer app = do
+  modifyIORef (app^.appUserData) $ \ud ->
+    let angle  = ud^.udAngle + 40 * (dt / 1000)
         angle' = (if angle >= 360 then subtract 360 else id) angle
-
-        camera = Xi.Camera (Xi.Perspective 60)
-                           (fromIntegral width / fromIntegral height)
-                           1
-                           20
-                           (L.V3 0 0 0)
-                           (L.V3 0 0 0)
-                           (L.V3 0 0 0)
-        camera' = if udProjection then camera else camera { Xi.cameraProjection = Xi.Ortho }
-        projection = Xi.cameraProjectionMat camera'
+        projection = Xi.cameraProjectionMat (ud^.udCamera)
         mvp = (Xi.rotate (Xi.translate L.eye4 0 0 (-2)) angle' 1 0 1) L.!*! projection
-    in ud { udAngle = angle'
-          , udModelViewProjMat = mvp
+    in ud { _udAngle = angle'
+          , _udModelViewProjMat = mvp
           }
   --
   GLUT.postRedisplay Nothing
@@ -143,32 +148,38 @@ timer app@App{..} = do
   dt = 20
 
 display :: App -> GLUT.DisplayCallback
-display App{..} = do
-  UserData{..} <- readIORef appUserData
+display app = do
+  ud <- readIORef (app^.appUserData)
   --
   (GLUT.Size width height) <- GLUT.get GLUT.windowSize
   glViewport 0 0 (fromIntegral width) (fromIntegral height)
-  glClear $ gl_COLOR_BUFFER_BIT .|. gl_DEPTH_BUFFER_BIT
+  glClear (gl_COLOR_BUFFER_BIT .|. gl_DEPTH_BUFFER_BIT)
   --
-  glUseProgram udProgram
-  glVertexAttribPointer udPositionLoc 3 gl_FLOAT 0 (fromIntegral $ 3 * sizeOf (undefined :: GLfloat)) udVertPtr
-  glEnableVertexAttribArray udPositionLoc
+  glUseProgram (ud^.udProgram)
+  let vertSize = fromIntegral $ 3 * sizeOf (undefined :: GLfloat)
+  glVertexAttribPointer (ud^.udPositionLoc) 3 gl_FLOAT 0 vertSize (ud^.udVertPtr)
+  glEnableVertexAttribArray (ud^.udPositionLoc)
   --
-  with udModelViewProjMat (glUniformMatrix4fv udModelViewProjLoc 1 0 . castPtr)
-  glDrawElements gl_TRIANGLES (36) gl_UNSIGNED_INT udIdxPtr
+  with (ud^.udModelViewProjMat) (\ptr -> glUniformMatrix4fv (ud^.udModelViewProjLoc) 1 0 (castPtr ptr))
+  glDrawElements gl_TRIANGLES (36) gl_UNSIGNED_INT (ud^.udIdxPtr)
   --
   glFlush
   GLUT.swapBuffers
 
 reshape :: App -> GLUT.ReshapeCallback
-reshape App{..} size = do
+reshape app size@(GLUT.Size w h) = do
+  modifyIORef (app^.appUserData) $ \ud -> ud & udCamera .~ (ud^.udCamera){ Xi.cameraAspectRatio = aspect }
   GLUT.viewport GLUT.$= (GLUT.Position 0 0, size)
+ where
+   aspect = fromIntegral w / fromIntegral h
 
 keyboardMouse :: App -> GLUT.KeyboardMouseCallback
 keyboardMouse App{..} key keyState modifiers pos = do
   case (key, keyState) of
     (GLUT.Char 'p', GLUT.Up) ->
-      modifyIORef appUserData (\ud -> ud { udProjection = not (udProjection ud)})
+      modifyIORef _appUserData $ \ud -> ud & udCamera .~ (case (ud^.udCamera) of
+          Xi.Camera{ Xi.cameraProjection = Xi.Ortho} -> (ud^.udCamera){ Xi.cameraProjection = Xi.Perspective 60 }
+          Xi.Camera{ Xi.cameraProjection = Xi.Perspective _} -> (ud^.udCamera){ Xi.cameraProjection = Xi.Ortho })
     _ -> return ()
 
 motion :: App -> GLUT.MotionCallback

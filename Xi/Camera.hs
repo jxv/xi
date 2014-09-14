@@ -43,6 +43,16 @@ ortho mat left right bottom top near far
     (V4 0                      0                      (-2 / dz)            0)
     (V4 (-(right + left) / dx) (-(top + bottom) / dy) (-(near + far) / dz) 1)
 
+lookAt :: Vec3 -> Vec3 -> Vec3 -> Mat4
+lookAt position target up =
+  let z = normalize (position - target)
+      x = normalize (up `cross` z)
+      y = normalize (z `cross` x)
+      m = V4 (point x) (point y) (point z) (V4 0 0 0 1)
+      position' = m !* (point (-position))
+      m' = (adjoint m) & _w .~ position'
+  in m'
+
 cameraProjectionMat :: Camera -> Mat4
 cameraProjectionMat Camera{ cameraProjection = Ortho, ..} =
   let left = -cameraAspectRatio
