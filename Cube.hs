@@ -2,6 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 
 module Main where
 
@@ -15,13 +16,12 @@ import Foreign.Storable
 import System.IO
 import System.Exit
 import Graphics.Rendering.OpenGL.Raw
-import qualified Linear as L
+import Linear (_x, _y, _z, (!*!), eye4, V3(..), V4(..))
 
 import Control.Exception (catch, SomeException)
 import Data.Bits ((.|.))
 
 import qualified Graphics.UI.GLUT as GLUT
-import qualified Linear as L
 import qualified Xi as Xi
 
 ------------------------------------------------------------------------------------------
@@ -79,19 +79,10 @@ makeApp = do
     , _udAngle = 45
     , _udVertPtr = vptr
     , _udIdxPtr = iptr
-    , _udCameraMat = L.eye4
-    , _udProjectionMat = L.eye4
-    , _udModelViewMat = L.eye4
-    , _udCamera = camera
-    }
-  camera = Xi.Camera
-    { Xi._cameraProjection = Xi.Perspective 60
-    , Xi._cameraAspectRatio = 1
-    , Xi._cameraNear = 1
-    , Xi._cameraFar = 20
-    , Xi._cameraPosition = L.V3 0 0 0
-    , Xi._cameraTarget = L.V3 0 0 0
-    , Xi._cameraUp = L.V3 0 0 0
+    , _udCameraMat = eye4
+    , _udProjectionMat = eye4
+    , _udModelViewMat = eye4
+    , _udCamera = Xi.defaultPerspectiveCamera
     }
 
 ------------------------------------------------------------------------------------------
@@ -137,12 +128,13 @@ timer app = do
   modifyIORef (app^.appUserData) $ \ud ->
     let angle  = ud^.udAngle + 40 * (dt / 1000)
         angle' = (if angle >= 360 then subtract 360 else id) angle
-        cameraMat = Xi.lookAt (L.V3 0 0 2) (L.V3 0 0 (-1)) (L.V3 0 1 0)
+        cameraMat = Xi.lookAt (V3 0 0 2) (V3 0 0 (-1)) (V3 0 1 0)
         projectionMat = Xi.cameraProjectionMat (ud^.udCamera)
         cpos = ud^.udCamera^.Xi.cameraPosition
-        translated = Xi.translate L.eye4 (0 - (cpos^.L._x)) (0 - (cpos^.L._y)) (-2 - (cpos^.L._z))
+        cscale = ud^.udCamera^.Xi.cameraScale
+        translated = Xi.translate eye4 (0 - (cpos^._x)) (0 - (cpos^._y)) (-2 - (cpos^._z))
         rotated = Xi.rotate translated angle' 1 0 1
-        scaled = Xi.scale rotated 0.3 0.3 0.3
+        scaled = Xi.scale rotated (1 * cscale) (1 * cscale) (1 * cscale)
         modelViewMat = scaled
     in ud { _udAngle = angle'
           , _udModelViewMat = modelViewMat
@@ -158,30 +150,32 @@ timer app = do
 
 display :: App -> GLUT.DisplayCallback
 display app = do
-  ud <- readIORef (app^.appUserData)
-  --
   (GLUT.Size width height) <- GLUT.get GLUT.windowSize
   glViewport 0 0 (fromIntegral width) (fromIntegral height)
   glClear (gl_COLOR_BUFFER_BIT .|. gl_DEPTH_BUFFER_BIT)
   --
-  glUseProgram (ud^.udProgram)
-  let vertSize = fromIntegral $ 3 * sizeOf (undefined :: GLfloat)
-  glVertexAttribPointer (ud^.udPositionLoc) 3 gl_FLOAT 0 vertSize (ud^.udVertPtr)
-  glEnableVertexAttribArray (ud^.udPositionLoc)
-  --
-  let mvp = ud^.udModelViewMat L.!*! ud^.udProjectionMat
-  with mvp (\ptr -> glUniformMatrix4fv (ud^.udModelViewProjLoc) 1 0 (castPtr ptr))
-  glDrawElements gl_TRIANGLES (36) gl_UNSIGNED_INT (ud^.udIdxPtr)
+  d^.Xi.drawableDraw
   --
   glFlush
   GLUT.swapBuffers
+ where
+  d = Xi.Drawable $ do
+    ud <- readIORef (app^.appUserData)
+    glUseProgram (ud^.udProgram)
+    let vertSize = fromIntegral $ 3 * sizeOf (undefined :: GLfloat)
+    glVertexAttribPointer (ud^.udPositionLoc) 3 gl_FLOAT 0 vertSize (ud^.udVertPtr)
+    glEnableVertexAttribArray (ud^.udPositionLoc)
+    --
+    let mvp = ud^.udModelViewMat !*! ud^.udProjectionMat
+    with mvp (\ptr -> glUniformMatrix4fv (ud^.udModelViewProjLoc) 1 0 (castPtr ptr))
+    glDrawElements gl_TRIANGLES (36) gl_UNSIGNED_INT (ud^.udIdxPtr)
 
 reshape :: App -> GLUT.ReshapeCallback
 reshape app size@(GLUT.Size w h) = do
-  modifyIORef (app^.appUserData) $ \ud -> ud & udCamera .~ (ud^.udCamera & Xi.cameraAspectRatio .~ aspect)
+  modifyIORef (app^.appUserData) $ udCamera %~ set Xi.cameraAspectRatio aspect
   GLUT.viewport GLUT.$= (GLUT.Position 0 0, size)
  where
-   aspect = fromIntegral w / fromIntegral h
+  aspect = fromIntegral w / fromIntegral h
 
 keyboardMouse :: App -> GLUT.KeyboardMouseCallback
 keyboardMouse App{..} key keyState modifiers pos = do
@@ -191,14 +185,16 @@ keyboardMouse App{..} key keyState modifiers pos = do
         let isOrtho = ud^.udCamera^.Xi.cameraProjection == Xi.Ortho
         in ud & udCamera .~ (ud^.udCamera & Xi.cameraProjection .~
                               (if isOrtho then Xi.Perspective 60 else Xi.Ortho))
-    (GLUT.SpecialKey GLUT.KeyUp, GLUT.Down) -> move 0 (-0.1)
-    (GLUT.SpecialKey GLUT.KeyDown, GLUT.Down) -> move 0 0.1
-    (GLUT.SpecialKey GLUT.KeyLeft, GLUT.Down) -> move (-0.1) 0
-    (GLUT.SpecialKey GLUT.KeyRight, GLUT.Down) -> move 0.1 0
+    (GLUT.SpecialKey GLUT.KeyUp, GLUT.Down)    -> move 0      0 (-0.1)
+    (GLUT.SpecialKey GLUT.KeyDown, GLUT.Down)  -> move 0      0 0.1
+    (GLUT.SpecialKey GLUT.KeyLeft, GLUT.Down)  -> move (-0.1) 0 0
+    (GLUT.SpecialKey GLUT.KeyRight, GLUT.Down) -> move 0.1    0 0
     _ -> return ()
  where
-  move x y = modifyIORef _appUserData $
-    udCamera %~ Xi.cameraPosition %~ (\(L.V3 a b c) -> L.V3 (a + x) b (c + y))
+  move x y z = modifyIORef _appUserData $ \ud ->
+    ud & udCamera %~ Xi.cameraPosition %~ over _x (+x) . over _y (+y) . over _z (+z)
+  scale z = modifyIORef _appUserData $ \ud ->
+    ud & udCamera %~ over Xi.cameraScale (\s -> if s + z < 0 then s else s + z)
 
 motion :: App -> GLUT.MotionCallback
 motion App{..} pos = do

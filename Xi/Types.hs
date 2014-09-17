@@ -47,11 +47,15 @@ data Camera = Camera
   , _cameraAspectRatio :: F
   , _cameraNear        :: F
   , _cameraFar         :: F
+  , _cameraScale       :: F
   , _cameraPosition    :: Vec3
   , _cameraTarget      :: Vec3
   , _cameraUp          :: Vec3
   } deriving (Eq, Show)
 
+data Drawable = Drawable
+  { _drawableDraw :: IO () }
 
 makeLenses ''Xi
 makeLenses ''Camera
+makeLenses ''Drawable

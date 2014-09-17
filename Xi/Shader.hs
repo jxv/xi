@@ -33,7 +33,6 @@ compileShaderFile filePath shaderType = do
     glGetShaderiv shader gl_COMPILE_STATUS statusPtr
     peek statusPtr
   --
-  --
   when (status == 0) $ do
     infoLogLen <- alloca $ \infoLogLenPtr -> do
       glGetShaderiv shader gl_INFO_LOG_LENGTH infoLogLenPtr
