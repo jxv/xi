@@ -30,11 +30,9 @@ data Buffer
     deriving (Show, Eq)
 
 data Xi = Xi
-  { _xiBackgroundColor :: Color4f
-  , _xiActiveBuffers   :: [Buffer]
-  , _xiSwapBuffers     :: IO ()
-  , _xiModelViewMat    :: Mat4
-  , _xiProjectionMat   :: Mat4
+  { _backgroundColor :: Color4f
+  , _activeBuffers   :: [Buffer]
+  , _swapBuffers     :: IO ()
   }
 
 data Projection
@@ -43,19 +41,21 @@ data Projection
     deriving (Eq, Show)
 
 data Camera = Camera
-  { _cameraProjection  :: Projection
-  , _cameraAspectRatio :: F
-  , _cameraNear        :: F
-  , _cameraFar         :: F
-  , _cameraScale       :: F
-  , _cameraPosition    :: Vec3
-  , _cameraTarget      :: Vec3
-  , _cameraUp          :: Vec3
+  { _projection  :: Projection
+  , _aspectRatio :: F
+  , _nearDepth   :: F
+  , _farDepth    :: F
+  , _scale       :: F
+  , _pos         :: Vec3
+  , _target      :: Vec3
+  , _up          :: Vec3
   } deriving (Eq, Show)
 
-data Drawable = Drawable
-  { _drawableDraw :: IO () }
+type Draw = IO ()
+data Font = Font
+
+class Drawable d where
+  draw :: d -> IO ()
 
 makeLenses ''Xi
 makeLenses ''Camera
-makeLenses ''Drawable

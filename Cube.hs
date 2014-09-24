@@ -35,25 +35,36 @@ import qualified Data.ByteString.Unsafe as B
 ------------------------------------------------------------------------------------------
 
 data App = App
-  { _appXi :: Xi.Xi
-  , _appUserData :: IORef UserData
+  { _xi :: Xi.Xi
+  , _userData :: IORef UserData
   }
 
 data UserData = UserData
-  { _udProgram          :: GLuint
-  , _udPositionLoc      :: GLuint
-  , _udModelViewProjLoc :: GLint
-  , _udAngle            :: GLfloat
-  , _udVertPtr          :: Ptr GLfloat
-  , _udIdxPtr           :: Ptr GLuint
-  , _udCameraMat        :: Xi.Mat4
-  , _udProjectionMat    :: Xi.Mat4
-  , _udModelViewMat     :: Xi.Mat4
-  , _udCamera           :: Xi.Camera
+  { _projectionMat :: Xi.Mat4
+  , _modelViewMat  :: Xi.Mat4
+  , _camera        :: Xi.Camera
+  , _cube          :: Cube
+  , _cubeRes       :: CubeRes
+  }
+
+data Cube = Cube
+  { _cubeAngle :: Xi.F
+  , _cubePos   :: Xi.Vec3
+  , _cubeScale :: Xi.F
+  }
+
+data CubeRes = CubeRes
+  { _cubeResProgram :: GLuint
+  , _cubeResPosLoc  :: GLuint
+  , _cubeResMvpLoc  :: GLint
+  , _cubeResVertPtr :: Ptr GLfloat
+  , _cubeResIdxPtr  :: Ptr GLuint
   }
 
 makeLenses ''App
 makeLenses ''UserData
+makeLenses ''Cube
+makeLenses ''CubeRes
 
 ------------------------------------------------------------------------------------------
 
@@ -68,11 +79,28 @@ makeApp = do
   vptr <- mallocList cubeVerts
   iptr <- mallocList cubeIndices
   --
-  ud <- newIORef (userData prog posLoc mvpLoc vptr iptr)
+  ud <- newIORef (userData (fromIntegral prog) (fromIntegral posLoc) mvpLoc vptr iptr)
   return $ App xi ud
  where
   xi = Xi.makeXi GLUT.swapBuffers
   userData prog posLoc mvpLoc vptr iptr = UserData
+    { _projectionMat = eye4
+    , _modelViewMat = eye4
+    , _camera = Xi.defaultPerspectiveCamera
+    , _cube = Cube
+        { _cubeAngle = 45
+        , _cubePos = V3 0 0 (-2)
+        , _cubeScale = 1
+        }
+    , _cubeRes = CubeRes
+        { _cubeResProgram = prog
+        , _cubeResPosLoc = posLoc
+        , _cubeResMvpLoc = mvpLoc
+        , _cubeResVertPtr = vptr
+        , _cubeResIdxPtr = iptr 
+        }
+    }
+{-
     { _udProgram = prog
     , _udPositionLoc = fromIntegral posLoc
     , _udModelViewProjLoc = mvpLoc
@@ -84,6 +112,7 @@ makeApp = do
     , _udModelViewMat = eye4
     , _udCamera = Xi.defaultPerspectiveCamera
     }
+-}
 
 ------------------------------------------------------------------------------------------
 
@@ -104,10 +133,10 @@ main = do
   --
   GLUT.mainLoop
   --
-  ud <- readIORef (app^.appUserData)
-  free (ud^.udVertPtr)
-  free (ud^.udIdxPtr)
-  glDeleteProgram (ud^.udProgram)
+  ud <- readIORef (app^.userData)
+  free (ud^.cubeRes^.cubeResVertPtr)
+  free (ud^.cubeRes^.cubeResIdxPtr)
+  glDeleteProgram (ud^.cubeRes^.cubeResProgram)
 
 ------------------------------------------------------------------------------------------
 
@@ -125,22 +154,20 @@ setup = do
 
 timer :: App -> GLUT.TimerCallback
 timer app = do
-  modifyIORef (app^.appUserData) $ \ud ->
-    let angle  = ud^.udAngle + 40 * (dt / 1000)
+  modifyIORef (app^.userData) $ \ud ->
+    let angle  = ud^.cube^.cubeAngle + 40 * (dt / 1000)
         angle' = (if angle >= 360 then subtract 360 else id) angle
         cameraMat = Xi.lookAt (V3 0 0 2) (V3 0 0 (-1)) (V3 0 1 0)
-        projectionMat = Xi.cameraProjectionMat (ud^.udCamera)
-        cpos = ud^.udCamera^.Xi.cameraPosition
-        cscale = ud^.udCamera^.Xi.cameraScale
-        translated = Xi.translate eye4 (0 - (cpos^._x)) (0 - (cpos^._y)) (-2 - (cpos^._z))
-        rotated = Xi.rotate translated angle' 1 0 1
-        scaled = Xi.scale rotated (1 * cscale) (1 * cscale) (1 * cscale)
-        modelViewMat = scaled
-    in ud { _udAngle = angle'
-          , _udModelViewMat = modelViewMat
-          , _udProjectionMat = projectionMat
-          , _udCameraMat = cameraMat
-          }
+        pMat = Xi.cameraProjectionMat (ud^.camera)
+        cpos = ud^.camera^.Xi.pos
+        cscale = ud^.camera^.Xi.scale
+        mvMat = Xi.scaleMat (1 * cscale) (1 * cscale) (1 * cscale) $
+                Xi.rotateMat angle' 1 0 1 $
+                Xi.translateMat (0 - (cpos^._x)) (0 - (cpos^._y)) (-2 - (cpos^._z)) eye4
+    in ud & (cube %~ cubeAngle .~ angle')
+          . (modelViewMat .~ mvMat)
+          . (projectionMat .~ pMat)
+
   --
   GLUT.postRedisplay Nothing
   GLUT.addTimerCallback dt (timer app)
@@ -154,25 +181,24 @@ display app = do
   glViewport 0 0 (fromIntegral width) (fromIntegral height)
   glClear (gl_COLOR_BUFFER_BIT .|. gl_DEPTH_BUFFER_BIT)
   --
-  d^.Xi.drawableDraw
+  ud <- readIORef (app ^. userData)
+  draw (ud ^. cube) (ud  ^. cubeRes) (ud ^. modelViewMat !*! ud ^. projectionMat)
   --
   glFlush
   GLUT.swapBuffers
  where
-  d = Xi.Drawable $ do
-    ud <- readIORef (app^.appUserData)
-    glUseProgram (ud^.udProgram)
+  draw c cc mvp = do
+    glUseProgram (cc^.cubeResProgram)
     let vertSize = fromIntegral $ 3 * sizeOf (undefined :: GLfloat)
-    glVertexAttribPointer (ud^.udPositionLoc) 3 gl_FLOAT 0 vertSize (ud^.udVertPtr)
-    glEnableVertexAttribArray (ud^.udPositionLoc)
+    glVertexAttribPointer (cc^.cubeResPosLoc) 3 gl_FLOAT 0 vertSize (cc^.cubeResVertPtr)
+    glEnableVertexAttribArray (cc^.cubeResPosLoc)
     --
-    let mvp = ud^.udModelViewMat !*! ud^.udProjectionMat
-    with mvp (\ptr -> glUniformMatrix4fv (ud^.udModelViewProjLoc) 1 0 (castPtr ptr))
-    glDrawElements gl_TRIANGLES (36) gl_UNSIGNED_INT (ud^.udIdxPtr)
+    with mvp (\ptr -> glUniformMatrix4fv (cc^.cubeResMvpLoc) 1 0 (castPtr ptr))
+    glDrawElements gl_TRIANGLES (36) gl_UNSIGNED_INT (cc^.cubeResIdxPtr)
 
 reshape :: App -> GLUT.ReshapeCallback
 reshape app size@(GLUT.Size w h) = do
-  modifyIORef (app^.appUserData) $ udCamera %~ set Xi.cameraAspectRatio aspect
+  modifyIORef (app^.userData) $ camera %~ set Xi.aspectRatio aspect
   GLUT.viewport GLUT.$= (GLUT.Position 0 0, size)
  where
   aspect = fromIntegral w / fromIntegral h
@@ -181,20 +207,22 @@ keyboardMouse :: App -> GLUT.KeyboardMouseCallback
 keyboardMouse App{..} key keyState modifiers pos = do
   case (key, keyState) of
     (GLUT.Char 'p', GLUT.Up) ->
-      modifyIORef _appUserData $ \ud ->
-        let isOrtho = ud^.udCamera^.Xi.cameraProjection == Xi.Ortho
-        in ud & udCamera .~ (ud^.udCamera & Xi.cameraProjection .~
-                              (if isOrtho then Xi.Perspective 60 else Xi.Ortho))
-    (GLUT.SpecialKey GLUT.KeyUp, GLUT.Down)    -> move 0      0 (-0.1)
-    (GLUT.SpecialKey GLUT.KeyDown, GLUT.Down)  -> move 0      0 0.1
-    (GLUT.SpecialKey GLUT.KeyLeft, GLUT.Down)  -> move (-0.1) 0 0
-    (GLUT.SpecialKey GLUT.KeyRight, GLUT.Down) -> move 0.1    0 0
+      modifyIORef _userData $ \ud ->
+        let isOrtho = ud^.camera^.Xi.projection == Xi.Ortho
+        in ud & camera .~ (ud^.camera & Xi.projection .~
+                            (if isOrtho then Xi.Perspective 60 else Xi.Ortho))
+    (GLUT.SpecialKey GLUT.KeyUp, GLUT.Down)    -> move 0        0 (-0.005)
+    (GLUT.SpecialKey GLUT.KeyDown, GLUT.Down)  -> move 0        0 0.005
+    (GLUT.SpecialKey GLUT.KeyLeft, GLUT.Down)  -> move (-0.005) 0 0
+    (GLUT.SpecialKey GLUT.KeyRight, GLUT.Down) -> move 0.005    0 0
+    (GLUT.Char 'f', GLUT.Down) -> scale (-0.005)
+    (GLUT.Char 'j', GLUT.Down) -> scale 0.005
     _ -> return ()
  where
-  move x y z = modifyIORef _appUserData $ \ud ->
-    ud & udCamera %~ Xi.cameraPosition %~ over _x (+x) . over _y (+y) . over _z (+z)
-  scale z = modifyIORef _appUserData $ \ud ->
-    ud & udCamera %~ over Xi.cameraScale (\s -> if s + z < 0 then s else s + z)
+  move x y z = modifyIORef _userData $ \ud ->
+    ud & camera %~ Xi.pos %~ over _x (+x) . over _y (+y) . over _z (+z)
+  scale z = modifyIORef _userData $ \ud ->
+    ud & camera %~ over Xi.scale (\s -> if s + z < 0 then s else s + z)
 
 motion :: App -> GLUT.MotionCallback
 motion App{..} pos = do

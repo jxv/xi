@@ -1,7 +1,7 @@
 module Xi.Util
-  ( scale
-  , translate
-  , rotate
+  ( scaleMat
+  , translateMat
+  , rotateMat
   ) where
 
 ------------------------------------------------------------------------------------------
@@ -11,22 +11,22 @@ import Xi.Types
 
 ------------------------------------------------------------------------------------------
 
-scale :: Mat4 -> F -> F -> F -> Mat4
-scale (V4 x y z w) sx sy sz = V4
+scaleMat :: F -> F -> F -> Mat4 -> Mat4
+scaleMat sx sy sz (V4 x y z w) = V4
   (x ^* sx)
   (y ^* sy)
   (z ^* sz)
   w
 
-translate :: Mat4 -> F -> F -> F -> Mat4
-translate (V4 x y z w) tx ty tz = V4 x y z $ V4
+translateMat :: F -> F -> F -> Mat4 -> Mat4
+translateMat tx ty tz (V4 x y z w) = V4 x y z $ V4
   ((w^._x) + (x^._x) * tx + (y^._x) * ty + (z^._x) * tz)
   ((w^._y) + (x^._y) * tx + (y^._y) * ty + (z^._y) * tz)
   ((w^._z) + (x^._z) * tx + (y^._z) * ty + (z^._z) * tz)
   ((w^._w) + (x^._w) * tx + (y^._w) * ty + (z^._w) * tz)
 
-rotate :: Mat4 -> F -> F -> F -> F -> Mat4
-rotate mat angle x y z
+rotateMat :: F -> F -> F -> F -> Mat4 -> Mat4
+rotateMat angle x y z mat
   | mag > 0 = rotMat !*! mat
   | otherwise = mat
  where
