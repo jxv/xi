@@ -13,7 +13,7 @@ data Tga = Tga
   , tgaWidth :: Word32
   , tgaHeight :: Word32
   , tgaBuffer :: BS.ByteString
-  }
+  } deriving (Show)
 
 
 instance Binary Tga where
