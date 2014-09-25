@@ -72,13 +72,13 @@ makeApp :: IO App
 makeApp = do
   prog <- Xi.makeProgram "data/Cube.vert" "data/Cube.frag"
   glUseProgram prog
-  --
+
   posLoc <- B.unsafeUseAsCString "a_position\0" (glGetAttribLocation prog)
   mvpLoc <- B.unsafeUseAsCString "u_modelViewProjMat\0" (glGetUniformLocation prog)
-  --
+
   vptr <- mallocList cubeVerts
   iptr <- mallocList cubeIndices
-  --
+
   ud <- newIORef (userData (fromIntegral prog) (fromIntegral posLoc) mvpLoc vptr iptr)
   return $ App xi ud
  where
@@ -100,19 +100,6 @@ makeApp = do
         , _cubeResIdxPtr = iptr 
         }
     }
-{-
-    { _udProgram = prog
-    , _udPositionLoc = fromIntegral posLoc
-    , _udModelViewProjLoc = mvpLoc
-    , _udAngle = 45
-    , _udVertPtr = vptr
-    , _udIdxPtr = iptr
-    , _udCameraMat = eye4
-    , _udProjectionMat = eye4
-    , _udModelViewMat = eye4
-    , _udCamera = Xi.defaultPerspectiveCamera
-    }
--}
 
 ------------------------------------------------------------------------------------------
 
@@ -122,21 +109,21 @@ main = do
   GLUT.initialDisplayMode GLUT.$= [GLUT.RGBMode, GLUT.WithDepthBuffer]
   GLUT.initialWindowSize GLUT.$= GLUT.Size 640 480
   GLUT.createWindow "Xi"
-  --
+
   app <- catch (setup >> makeApp) (\ex -> print  (ex :: SomeException) >> exitFailure)
-  --
+
   GLUT.reshapeCallback GLUT.$= Just (reshape app)
   GLUT.keyboardMouseCallback GLUT.$= Just (keyboardMouse app)
   GLUT.motionCallback GLUT.$= Just (motion app)
   GLUT.displayCallback GLUT.$= (display app)
-  GLUT.addTimerCallback 20 (timer app)
-  --
+  timer app 20
+
   GLUT.mainLoop
-  --
-  ud <- readIORef (app^.userData)
-  free (ud^.cubeRes^.cubeResVertPtr)
-  free (ud^.cubeRes^.cubeResIdxPtr)
-  glDeleteProgram (ud^.cubeRes^.cubeResProgram)
+
+  ud <- readIORef (app ^. userData)
+  free (ud ^. cubeRes ^. cubeResVertPtr)
+  free (ud ^. cubeRes ^. cubeResIdxPtr)
+  glDeleteProgram (ud ^. cubeRes ^. cubeResProgram)
 
 ------------------------------------------------------------------------------------------
 
@@ -144,23 +131,23 @@ setup :: IO ()
 setup = do
   glEnable gl_DEPTH_TEST
   glDepthFunc gl_LEQUAL
-  --
+
   glClearColor 0.2 0.2 0.2 1.0
-  --
+
   glEnable gl_CULL_FACE
   glCullFace gl_BACK
 
 ------------------------------------------------------------------------------------------
 
-timer :: App -> GLUT.TimerCallback
-timer app = do
-  modifyIORef (app^.userData) $ \ud ->
-    let angle  = ud^.cube^.cubeAngle + 40 * (dt / 1000)
+timer :: App -> Int -> GLUT.TimerCallback
+timer app dt = do
+  modifyIORef (app ^. userData) $ \ud ->
+    let angle  = (ud ^. cube ^. cubeAngle) + 40 * (fromIntegral dt / 1000)
         angle' = (if angle >= 360 then subtract 360 else id) angle
         cameraMat = Xi.lookAt (V3 0 0 2) (V3 0 0 (-1)) (V3 0 1 0)
-        pMat = Xi.cameraProjectionMat (ud^.camera)
-        cpos = ud^.camera^.Xi.pos
-        cscale = ud^.camera^.Xi.scale
+        pMat = Xi.cameraProjectionMat (ud ^. camera)
+        cpos = ud ^. camera ^. Xi.pos
+        cscale = ud ^. camera ^. Xi.scale
         mvMat = Xi.scaleMat (1 * cscale) (1 * cscale) (1 * cscale) $
                 Xi.rotateMat angle' 1 0 1 $
                 Xi.translateMat (0 - (cpos^._x)) (0 - (cpos^._y)) (-2 - (cpos^._z)) eye4
@@ -168,33 +155,29 @@ timer app = do
           . (modelViewMat .~ mvMat)
           . (projectionMat .~ pMat)
 
-  --
   GLUT.postRedisplay Nothing
-  GLUT.addTimerCallback dt (timer app)
- where
-  dt :: Num a => a
-  dt = 20
+  GLUT.addTimerCallback dt (timer app dt)
 
 display :: App -> GLUT.DisplayCallback
 display app = do
   (GLUT.Size width height) <- GLUT.get GLUT.windowSize
   glViewport 0 0 (fromIntegral width) (fromIntegral height)
   glClear (gl_COLOR_BUFFER_BIT .|. gl_DEPTH_BUFFER_BIT)
-  --
+
   ud <- readIORef (app ^. userData)
   draw (ud ^. cube) (ud  ^. cubeRes) (ud ^. modelViewMat !*! ud ^. projectionMat)
-  --
+
   glFlush
   GLUT.swapBuffers
  where
   draw c cc mvp = do
     glUseProgram (cc^.cubeResProgram)
     let vertSize = fromIntegral $ 3 * sizeOf (undefined :: GLfloat)
-    glVertexAttribPointer (cc^.cubeResPosLoc) 3 gl_FLOAT 0 vertSize (cc^.cubeResVertPtr)
-    glEnableVertexAttribArray (cc^.cubeResPosLoc)
-    --
-    with mvp (\ptr -> glUniformMatrix4fv (cc^.cubeResMvpLoc) 1 0 (castPtr ptr))
-    glDrawElements gl_TRIANGLES (36) gl_UNSIGNED_INT (cc^.cubeResIdxPtr)
+    glVertexAttribPointer (cc ^. cubeResPosLoc) 3 gl_FLOAT 0 vertSize (cc ^. cubeResVertPtr)
+    glEnableVertexAttribArray (cc ^. cubeResPosLoc)
+
+    with mvp (\ptr -> glUniformMatrix4fv (cc ^. cubeResMvpLoc) 1 0 (castPtr ptr))
+    glDrawElements gl_TRIANGLES (36) gl_UNSIGNED_INT (cc ^. cubeResIdxPtr)
 
 reshape :: App -> GLUT.ReshapeCallback
 reshape app size@(GLUT.Size w h) = do
