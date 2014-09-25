@@ -25,6 +25,8 @@ import qualified Data.ByteString.Unsafe as BS
 import qualified Data.ByteString.Lazy as BL
 import qualified Xi as Xi
 
+import Tga
+
 
 data App = App
   { programObject :: GLuint
@@ -41,50 +43,8 @@ data App = App
   }
 
 
-data Tga = Tga
-  { tgaHeader :: BS.ByteString
-  , tgaWidth :: Word32
-  , tgaHeight :: Word32
-  , tgaBuffer :: BS.ByteString
-  }
-
-
 num :: (Integral a, Num b) => a -> b
 num = fromIntegral
-
-
-instance Binary Tga where
-  put tga = do
-    put (tgaHeader tga)
-    let width = tgaWidth tga
-    let height = tgaHeight tga
-    let w = shiftL width 8
-    let h = shiftL height 8
-    let x = width - (shiftR w 8)
-    let y = height - (shiftR h 8)
-    putWord8 (num x)
-    putWord8 (num w)
-    putWord8 (num y)
-    putWord8 (num h)
-    put (tgaBuffer tga)
-  get = do
-    header <- getByteString 12
-    x <- getWord8
-    w <- getWord8
-    y <- getWord8
-    h <- getWord8
-    s <- getWord8
-    _ <- getWord8
-    let width = num w * 256 + num x
-    let height = num h * 256 + num y
-    let imgSize = (num s `div` 8) * num width * num height :: Int
-    buffer <- getByteString imgSize
-    return $ Tga
-      { tgaHeader = header
-      , tgaWidth = width
-      , tgaHeight = height
-      , tgaBuffer = buffer
-      }
 
 
 loadTexture :: String -> IO GLuint
