@@ -1,3 +1,6 @@
+{-# LANGUAGE RecordWildCards  #-} 
+
+
 module Tga where
 
 
@@ -12,24 +15,25 @@ data Tga = Tga
   { tgaHeader :: BS.ByteString
   , tgaWidth :: Word32
   , tgaHeight :: Word32
+  , tgaSize :: Word8
   , tgaBuffer :: BS.ByteString
   } deriving (Show)
 
 
 instance Binary Tga where
-  put tga = do
-    put (tgaHeader tga)
-    let width = tgaWidth tga
-    let height = tgaHeight tga
-    let w = shiftL width 8
-    let h = shiftL height 8
-    let x = width - (shiftR w 8)
-    let y = height - (shiftR h 8)
+  put Tga{..} = do
+    put tgaHeader
+    let w = shiftL tgaWidth 8
+    let h = shiftL tgaHeight 8
+    let x = tgaWidth - (shiftR w 8)
+    let y = tgaHeight - (shiftR h 8)
     putWord8 (fromIntegral x)
     putWord8 (fromIntegral w)
     putWord8 (fromIntegral y)
     putWord8 (fromIntegral h)
-    put (tgaBuffer tga)
+    putWord8 tgaSize
+    putWord8 0x00
+    put tgaBuffer
   get = do
     header <- getByteString 12
     x <- getWord8
@@ -46,6 +50,7 @@ instance Binary Tga where
       { tgaHeader = header
       , tgaWidth = width
       , tgaHeight = height
+      , tgaSize = s
       , tgaBuffer = buffer
       }
 
