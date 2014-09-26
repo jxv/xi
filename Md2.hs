@@ -1,5 +1,8 @@
 {-# LANGUAGE RecordWildCards  #-} 
 {-# LANGUAGE DeriveGeneric  #-} 
+{-# LANGUAGE TupleSections #-}
+{-# LANGUAGE NamedFieldPuns #-}
+
 
 module Md2 where
 
@@ -7,8 +10,10 @@ module Md2 where
 import Control.Applicative
 import Data.Bits
 import Data.Binary
+import Data.Binary.IEEE754
 import Data.Binary.Get
 import Data.Word
+import Data.Int
 import GHC.Generics (Generic)
 import Foreign.Storable (Storable(..), sizeOf)
 import qualified Data.ByteString as BS
@@ -65,11 +70,11 @@ data GLCmdVert = GLCmdVert
   , glCmdVertIdx :: Word32
   } deriving (Generic, Show)
 
--- Skin
 
 data Md2 = Md2
   { md2Header :: Md2Header
   , md2SkinBuf :: BL.ByteString
+  , md2Frames :: [Frame]
   } deriving (Show)
 
 
@@ -109,36 +114,45 @@ instance Binary Md2 where
     buffer <- getLazyByteString (fromIntegral md2HeaderOfsEnd - 68)
     let getBuf n o s
           = BL.take (fromIntegral n * fromIntegral s)
-          . BL.drop (fromIntegral o * fromIntegral s)
+          . BL.drop (fromIntegral o)
           $ buffer
     let skinBuf = getBuf md2HeaderNumSkins (md2HeaderOfsSkins - 68) (size32 * 16)
     let frameBuf = getBuf md2HeaderNumFrames (md2HeaderOfsFrames - 68) md2HeaderFramesize
+
+    let frames = runGet (sequence $ replicate (fromIntegral md2HeaderNumFrames) (getFrame $ fromIntegral md2HeaderNumXyz))
+                        frameBuf
     return $ Md2
       { md2Header = header
       , md2SkinBuf = skinBuf
+      , md2Frames = frames
       }
    where
     size32 = sizeOf (undefined :: Word32)
 
 
 putFrame :: Frame -> Put
-putFrame Frame{..} = do
-  put frameScale
-  put frameTranslate
+putFrame Frame{frameScale = (sx,sy,sz), frameTranslate = (tx,ty,tz), ..} = do
+  putFloat32le sx
+  putFloat32le sy
+  putFloat32le sz
+  putFloat32le tx
+  putFloat32le ty
+  putFloat32le tz
   put frameName
   put frameTriVerts
 
 
-getFrame :: Get Frame
-getFrame = do
-  scale <- get
-  translate <- get
+getFrame :: Int -> Get Frame
+getFrame numVert = do
+  scale <- (,,) <$> getFloat32le <*> getFloat32le <*> getFloat32le
+  translate <- (,,) <$> getFloat32le <*> getFloat32le <*> getFloat32le
   name <- getByteString 16
+  verts <- sequence (replicate numVert get)
   return $ Frame
     { frameScale = scale
     , frameTranslate = translate
     , frameName = name
-    , frameTriVerts = []
+    , frameTriVerts = verts
     }
 
 
