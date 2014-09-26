@@ -4,9 +4,8 @@ module Tex where
 
 import Control.Applicative ((<$>))
 import Control.Exception (SomeException, catch)
-import Data.Bits ((.|.), shiftL, shiftR)
-import Data.Binary
-import Data.Binary.Get (skip, getByteString)
+import Data.Bits ((.|.))
+import Data.Binary (decodeFile)
 import Data.IORef
 import Data.Word
 import Graphics.Rendering.OpenGL.Raw

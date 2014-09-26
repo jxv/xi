@@ -10,7 +10,9 @@ import Data.Binary
 import Data.Binary.Get
 import Data.Word
 import GHC.Generics (Generic)
+import Foreign.Storable (Storable(..), sizeOf)
 import qualified Data.ByteString as BS
+import qualified Data.ByteString.Lazy as BL
 
 
 data Md2Header = Md2Header
@@ -52,7 +54,7 @@ data Frame = Frame
 
 data Tri = Tri
   { triVertIdx :: (Word16, Word16, Word16)
-  , triTexidx :: (Word16, Word16, Word16)
+  , triTexIdx :: (Word16, Word16, Word16)
   } deriving (Generic, Show)
 
 
@@ -65,15 +67,82 @@ data GLCmdVert = GLCmdVert
   , glCmdVertIdx :: Word32
   } deriving (Generic, Show)
 
+-- Skin
 
 data Md2 = Md2
   { md2Header :: Md2Header
+  , md2SkinBuf :: BL.ByteString
   } deriving (Show)
 
 
-instance Binary Md2Header
 instance Binary TriVert
 instance Binary Tri
 instance Binary GLCmdVert
+
+
+instance Binary Md2Header where
+  put Md2Header{..} = do
+    return ()
+  get = Md2Header
+    <$> getWord32le
+    <*> getWord32le
+    <*> getWord32le
+    <*> getWord32le
+    <*> getWord32le
+    <*> getWord32le
+    <*> getWord32le
+    <*> getWord16le
+    <*> getWord16le
+    <*> getWord32le
+    <*> getWord32le
+    <*> getWord32le
+    <*> getWord32le
+    <*> getWord16le
+    <*> getWord16le
+    <*> getWord32le
+    <*> getWord32le
+    <*> getWord32le
+    <*> getWord32le
+
+
+instance Binary Md2 where
+  put Md2{..} = do
+    return ()
+  get = do
+    header@Md2Header{..} <- get
+    buffer <- getLazyByteString (fromIntegral md2HeaderOfsEnd - 68)
+    let getBuf n o s
+          = BL.take (fromIntegral n * fromIntegral s)
+          . BL.drop (fromIntegral o * fromIntegral s)
+          $ buffer
+    let skinBuf = getBuf md2HeaderNumSkins (md2HeaderOfsSkins - 68) (size32 * 16)
+    let frameBuf = getBuf md2HeaderNumFrames (md2HeaderOfsFrames - 68) md2HeaderFramesize
+    return $ Md2
+      { md2Header = header
+      , md2SkinBuf = skinBuf
+      }
+   where
+    size32 = sizeOf (undefined :: Word32)
+
+
+putFrame :: Frame -> Put
+putFrame Frame{..} = do
+  put frameScale
+  put frameTranslate
+  put frameName
+  put frameTriVerts
+
+
+getFrame :: Get Frame
+getFrame = do
+  scale <- get
+  translate <- get
+  name <- getByteString 16
+  return $ Frame
+    { frameScale = scale
+    , frameTranslate = translate
+    , frameName = name
+    , frameTriVerts = []
+    }
 
 
