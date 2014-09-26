@@ -23,14 +23,12 @@ data Md2Header = Md2Header
   , md2HeaderFramesize :: Word32
   , md2HeaderNumSkins :: Word32
   , md2HeaderNumXyz :: Word32
-  , md2HeaderNumS :: Word16
-  , md2HeaderNumT :: Word16
+  , md2HeaderNumSt :: Word32
   , md2HeaderNumTris :: Word32
   , md2HeaderNumGlcmds :: Word32
   , md2HeaderNumFrames :: Word32
   , md2HeaderOfsSkins :: Word32
-  , md2HeaderOfsS :: Word16
-  , md2HeaderOfsT :: Word16
+  , md2HeaderOfsSt :: Word32
   , md2HeaderOfsTris :: Word32
   , md2HeaderOfsFrames :: Word32
   , md2HeaderOfsGlcmds :: Word32
@@ -91,14 +89,12 @@ instance Binary Md2Header where
     <*> getWord32le
     <*> getWord32le
     <*> getWord32le
-    <*> getWord16le
-    <*> getWord16le
     <*> getWord32le
     <*> getWord32le
     <*> getWord32le
     <*> getWord32le
-    <*> getWord16le
-    <*> getWord16le
+    <*> getWord32le
+    <*> getWord32le
     <*> getWord32le
     <*> getWord32le
     <*> getWord32le
