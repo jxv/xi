@@ -12,6 +12,7 @@ import Data.Bits
 import Data.Binary
 import Data.Binary.IEEE754
 import Data.Binary.Get
+import Data.Binary.Put
 import Data.Word
 import Data.Int
 import GHC.Generics (Generic)
@@ -64,23 +65,25 @@ data Tri = Tri
 type TexCoord = (Word16, Word16)
 
 
-data GLCmdVert = GLCmdVert
-  { glCmdVertS :: Float
-  , glCmdVertT :: Float
+data GLCmd = GLCmd
+  { glCmdS :: Float
+  , glCmdT :: Float
   , glCmdVertIdx :: Word32
-  } deriving (Generic, Show)
+  } deriving (Show)
 
 
 data Md2 = Md2
   { md2Header :: Md2Header
   , md2SkinBuf :: BL.ByteString
   , md2Frames :: [Frame]
+  , md2Tris :: [Tri]
+  , md2St :: [TexCoord]
+  , md2GLCmd :: [GLCmd]
   } deriving (Show)
 
 
 instance Binary TriVert
 instance Binary Tri
-instance Binary GLCmdVert
 
 
 instance Binary Md2Header where
@@ -117,17 +120,45 @@ instance Binary Md2 where
           . BL.drop (fromIntegral o)
           $ buffer
     let skinBuf = getBuf md2HeaderNumSkins (md2HeaderOfsSkins - 68) (size32 * 16)
-    let frameBuf = getBuf md2HeaderNumFrames (md2HeaderOfsFrames - 68) md2HeaderFramesize
 
-    let frames = runGet (sequence $ replicate (fromIntegral md2HeaderNumFrames) (getFrame $ fromIntegral md2HeaderNumXyz))
+    let triBuf = getBuf md2HeaderNumTris (md2HeaderOfsTris - 68) (size16 * 6)
+    let tris = runGet (sequence $ replicate (fromIntegral md2HeaderNumTris) get)
+                      triBuf
+
+    let texCoordBuf = getBuf md2HeaderNumSt (md2HeaderOfsSt - 68) (size16 * 2)
+    let texCoords = runGet (sequence $ replicate (fromIntegral md2HeaderNumSt)
+                                                 ((,) <$> getWord16le <*> getWord16le))
+                           texCoordBuf
+
+    let frameBuf = getBuf md2HeaderNumFrames (md2HeaderOfsFrames - 68) md2HeaderFramesize
+    let frames = runGet (sequence $ replicate (fromIntegral md2HeaderNumFrames)
+                                              (getFrame $ fromIntegral md2HeaderNumXyz))
                         frameBuf
+
+    let glCmdBuf = getBuf md2HeaderNumGlcmds (md2HeaderOfsGlcmds - 68) size32
+    let glCmds = runGet (sequence $ replicate (fromIntegral md2HeaderNumGlcmds `div` 3)
+                                              get)
+                        glCmdBuf
+
     return $ Md2
       { md2Header = header
       , md2SkinBuf = skinBuf
       , md2Frames = frames
+      , md2Tris = tris
+      , md2St = texCoords
+      , md2GLCmd = glCmds
       }
    where
+    size16 = sizeOf (undefined :: Word16)
     size32 = sizeOf (undefined :: Word32)
+
+
+instance Binary GLCmd where
+  put GLCmd{..} = do
+    putFloat32le glCmdS
+    putFloat32le glCmdT
+    putWord32le glCmdVertIdx
+  get = GLCmd <$> getFloat32le <*> getFloat32le <*> getWord32le
 
 
 putFrame :: Frame -> Put
