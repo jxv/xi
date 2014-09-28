@@ -1,20 +1,19 @@
 module Tga where
 
-
 import Data.Bits
 import Data.Binary
 import Data.Binary.Get
 import Data.Word
-import qualified Data.ByteString as BS
+import Data.ByteString
 
 
 data Tga = Tga
-  { tgaHeader :: BS.ByteString
+  { tgaHeader :: ByteString
   , tgaWidth  :: Word32
   , tgaHeight :: Word32
   , tgaSize   :: Word8
-  , tgaBuffer :: BS.ByteString
-  } deriving (Show)
+  , tgaBuffer :: ByteString
+  } deriving (Show, Eq)
 
 
 instance Binary Tga where
