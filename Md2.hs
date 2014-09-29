@@ -208,10 +208,35 @@ instance Binary Md2 where
 ------------------------------------------------------------------------------------------
 
 
-data Anim = Anim
-  { animFirstFrame :: Int
-  , animLastFrame :: Int
-  , animFps :: Int
+data Anim
+  = Stand
+  | Run
+  | Attack
+  | PainA
+  | PainB
+  | PainC
+  | Jump
+  | Flip
+  | Salute
+  | FallBackward
+  | Wave
+  | Point
+  | CrouchStand
+  | CrouchWalk
+  | CrouchAttack
+  | CrouchPain
+  | CrouchDeath
+  | DeathFallBackward
+  | DeathFallForward
+  | DeathFallBackwardSlowly
+  | Boom
+  deriving (Show, Eq, Enum)
+
+
+data AnimSeq = AnimSeq
+  { animSeqFirstFrame :: Int
+  , animSeqLastFrame :: Int
+  , animSeqFps :: Int
   }
 
 
@@ -222,7 +247,7 @@ data AnimState = AnimState
   , animStateCurrTime :: Float
   , animStateOldTime :: Float
   , animStateInterpol :: Float
-  , animStateType :: Int
+  , animStateAnim :: Anim
   , animStateCurrFrame :: Int
   , animStateNextFrame :: Int
   }
@@ -241,32 +266,30 @@ data Model = Model
   , modelAnimState :: AnimState
   , modelScale :: Float
   }
+ 
 
-
-animList :: [Anim]
-animList =
-  [ Anim   0  39  9 -- Stand
-  , Anim  40  45 10 -- Run
-  , Anim  46  53 10 -- Attack
-  , Anim  54  57  7 -- Pain A
-  , Anim  58  61  7 -- Pain B
-  , Anim  62  65  7 -- Pain C
-  , Anim  66  71  7 -- Jump
-  , Anim  72  83  7 -- Flip
-  , Anim  84  94  7 -- Salute
-  , Anim  95 111 10 -- Fall Backward
-  , Anim 112 122  7 -- Wave
-  , Anim 123 134  6 -- Point
-  , Anim 135 153 10 -- Crouch Stand
-  , Anim 154 159  7 -- Crouch Walk
-  , Anim 160 168 10 -- Crouch Attack
-  , Anim 196 172  7 -- Crouch Pain
-  , Anim 173 177  5 -- Crouch Death
-  , Anim 178 183  7 -- Death Fall Backward
-  , Anim 184 189  7 -- Death Fall Forward
-  , Anim 190 197  7 -- Death Fall Backward Slowly
-  , Anim 198 198  5 -- Boom
-  ]
+animSeq :: Anim -> AnimSeq 
+animSeq Stand = AnimSeq 0 39 9
+animSeq Run = AnimSeq 40 45 10
+animSeq Attack = AnimSeq 46 53 10
+animSeq PainA = AnimSeq 54  57 7
+animSeq PainB = AnimSeq 58 61 7
+animSeq PainC = AnimSeq 62 65 7
+animSeq Jump = AnimSeq 66 71 7
+animSeq Flip = AnimSeq 72 83 7
+animSeq Salute = AnimSeq 84 94 7
+animSeq FallBackward = AnimSeq 95 111 10
+animSeq Wave = AnimSeq 112 122 7 
+animSeq Point = AnimSeq 123 134 6
+animSeq CrouchStand = AnimSeq 135 153 10
+animSeq CrouchWalk = AnimSeq 154 159 7
+animSeq CrouchAttack = AnimSeq 160 168 10
+animSeq CrouchPain = AnimSeq 196 172 7 
+animSeq CrouchDeath = AnimSeq 173 177 5
+animSeq DeathFallBackward = AnimSeq 178 183 7
+animSeq DeathFallForward = AnimSeq 184 189 7
+animSeq DeathFallBackwardSlowly = AnimSeq 190 197 7
+animSeq Boom = AnimSeq 198 198 5
 
 
 loadModel :: FilePath -> IO Model
@@ -285,7 +308,7 @@ drawFrame :: Model -> Int -> IO ()
 drawFrame = undefined
 
 
-setAnim :: Model -> Int -> Model
+setAnim :: Model -> Anim -> Model
 setAnim = undefined
 
 
