@@ -316,8 +316,16 @@ scaleModel :: Model -> Float -> Model
 scaleModel = undefined
 
 
-animate :: Model -> Float -> Model
-animate = undefined 
+animate :: AnimState -> Float -> AnimState
+animate animState@AnimState{..} time =
+  let isNextFrame = time - animStateOldTime > (1.0 / fromIntegral animStateFps)
+      currFrame = if isNextFrame then animStateNextFrame else animStateCurrFrame
+      nextFrame = animStateNextFrame = (if isNextFrame then 1 else 0) + animStateNextFrame
+      nextFrame' = 
+  in animState
+       { animStateCurrFrame = currFrame
+       , animStateNextFrame = nextFrame'
+       }
 
 -- processLighting -- not needed, use lighting inside shaders
 -- anormsDot :: Float -- [shadedot_quant][26] -- for lighting from many directions
