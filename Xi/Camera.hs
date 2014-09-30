@@ -18,26 +18,26 @@ import Xi.Util
 
 defaultOrthoCamera :: Camera
 defaultOrthoCamera = Camera
-  { _projection = Ortho
-  , _aspectRatio = 1
-  , _nearDepth = 1
-  , _farDepth = 20
-  , _scale = 1
-  , _pos = V3 0 0 0
-  , _target = V3 0 0 0
-  , _up = V3 0 0 0
+  { _camProjection = Ortho
+  , _camAspectRatio = 1
+  , _camNearDepth = 1
+  , _camFarDepth = 20
+  , _camScale = 1
+  , _camPos = V3 0 0 0
+  , _camTarget = V3 0 0 0
+  , _camUp = V3 0 0 0
   }
 
 defaultPerspectiveCamera :: Camera
 defaultPerspectiveCamera = Camera
-  { _projection = Perspective 60
-  , _aspectRatio = 1
-  , _nearDepth = 1
-  , _farDepth = 20
-  , _scale = 1
-  , _pos = V3 0 0 0
-  , _target = V3 0 0 0
-  , _up = V3 0 0 0
+  { _camProjection = Perspective 60
+  , _camAspectRatio = 1
+  , _camNearDepth = 1
+  , _camFarDepth = 20
+  , _camScale = 1
+  , _camPos = V3 0 0 0
+  , _camTarget = V3 0 0 0
+  , _camUp = V3 0 0 0
   }
 
 frustum :: Mat4 -> F -> F -> F -> F -> F -> F -> Mat4
@@ -81,22 +81,22 @@ lookAt pos target up =
   in m'
 
 cameraProjectionMat :: Camera -> Mat4
-cameraProjectionMat Camera{ _projection = Ortho, ..} =
-  let left = -_aspectRatio
-      right = _aspectRatio
+cameraProjectionMat Camera{ _camProjection = Ortho, ..} =
+  let left = -_camAspectRatio
+      right = _camAspectRatio
       bottom = -1
       top = 1
-      near = _nearDepth
-      far = _farDepth
+      near = _camNearDepth
+      far = _camFarDepth
   in ortho eye4 left right bottom top near far
-cameraProjectionMat Camera{ _projection = Perspective fieldOfViewY, ..} =
-  let height = _nearDepth * tan (fieldOfViewY / 360 * pi)
-      width = _aspectRatio * height
+cameraProjectionMat Camera{ _camProjection = Perspective fovy, ..} =
+  let height = _camNearDepth * tan (fovy / 360 * pi)
+      width = _camAspectRatio * height
       left = -width
       right = width
       bottom = -height
       top = height
-      near = _nearDepth
-      far = _farDepth
+      near = _camNearDepth
+      far = _camFarDepth
   in frustum eye4 left right bottom top near far
 

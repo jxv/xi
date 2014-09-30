@@ -30,9 +30,9 @@ data Buffer
     deriving (Show, Eq)
 
 data Xi = Xi
-  { _backgroundColor :: Color4f
-  , _activeBuffers   :: [Buffer]
-  , _swapBuffers     :: IO ()
+  { _xiBackgroundColor :: Color4f
+  , _xiActiveBuffers   :: [Buffer]
+  , _xiSwapBuffers     :: IO ()
   }
 
 data Projection
@@ -41,15 +41,19 @@ data Projection
     deriving (Eq, Show)
 
 data Camera = Camera
-  { _projection  :: Projection
-  , _aspectRatio :: F
-  , _nearDepth   :: F
-  , _farDepth    :: F
-  , _scale       :: F
-  , _pos         :: Vec3
-  , _target      :: Vec3
-  , _up          :: Vec3
+  { _camProjection  :: Projection
+  , _camAspectRatio :: F
+  , _camNearDepth   :: F
+  , _camFarDepth    :: F
+  , _camScale       :: F
+  , _camPos         :: Vec3
+  , _camTarget      :: Vec3
+  , _camUp          :: Vec3
   } deriving (Eq, Show)
+
+data TexManager = TexManager
+  { _bindTex :: GLuint -> IO ()
+  }
 
 type Draw = IO ()
 data Font = Font
