@@ -152,8 +152,5 @@ PROTOTYPE_Q(f, float)
 PROTOTYPE_Q(i, int)
 PROTOTYPE_Q(d, double)
 
-DEFINE_Q(f, float, sqrtf, sinf, cosf, acosf)
-DEFINE_Q(i, int, sqrtf, sinf, cosf, acosf)
-DEFINE_Q(d, double, sqrt, sin, cos, acos)
 
 #endif 
